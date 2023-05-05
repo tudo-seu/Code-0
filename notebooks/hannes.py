@@ -9,7 +9,7 @@ df = pd.read_csv(data)
 
 df.sort_values(by = "Measure")
 
-df.dropna()     #deleting NaN Values
+#df.dropna()     #deleting NaN Values
 
 f = df.loc[:, 'Measure'].unique()
 
