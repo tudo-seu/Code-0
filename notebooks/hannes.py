@@ -11,4 +11,13 @@ df.sort_values(by = "Measure")
 
 df.dropna()     #deleting NaN Values
 
-print(df.head())
+f = df.loc[:, 'Measure'].unique()
+
+for i in f:
+    result = df[df['Measure'] == i]
+    print(result.head())
+    print(len(result))
+    result.to_csv(r'D:\Eigene Dokumente\Desktop\Uni\Hackathon\Code-0\data\sep\Measure_' + i + '.csv')
+    print("********************")
+#print(f.head())
+print(len(f))
