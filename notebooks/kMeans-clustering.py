@@ -89,7 +89,7 @@ X = scaler.fit_transform(X)
 
 X = np.nan_to_num(X, nan=0)
 # Apply K-means clustering
-Kneighbor = KMeans(n_clusters=5, random_state=0)
+Kneighbor = KMeans(n_clusters=6, random_state=0)
 labels = Kneighbor.fit_predict(X)
 
 
@@ -110,20 +110,18 @@ for i in grouped:
 clusters.sort()
 
 for i in range(len(clusters)):
-    print(np.where(grouped == clusters[i])[0][0])
     clusters[i] = np.where(grouped == clusters[i])[0][0]
 
-print(clusters)
-print(len(df['kWh'])*0.88)
 percentage =  len(vergleich.loc[vergleich['label'] == 'unclassified', 'label']) / len(vergleich.loc[vergleich['label'] != 'unclassified', 'label'])
-print('Unclassified tags %:',percentage)
+print('Unclassified tags:',percentage*100, '%')
 print('Theoretical accuracy :', 1-percentage)
 
 df.loc[df['cluster'] == clusters[0], 'label'] = 'Non-production'
 df.loc[df['cluster'] == clusters[1], 'label'] = 'Non-production'
-df.loc[df['cluster'] == clusters[2], 'label'] = 't'
-df.loc[df['cluster'] == clusters[3], 'label'] = 'Production'
+df.loc[df['cluster'] == clusters[2], 'label'] = 'Non-production'
+df.loc[df['cluster'] == clusters[3], 'label'] = 't'
 df.loc[df['cluster'] == clusters[4], 'label'] = 'Production'
+df.loc[df['cluster'] == clusters[5], 'label'] = 'Production'
 '''
 df.loc[df['cluster'] == clusters[5], 'label'] = 'Production'
 df.loc[df['cluster'] == clusters[6], 'label'] = 'Production'
@@ -150,6 +148,10 @@ df['time'] = pd.to_datetime(df['time'])
 df = df.set_index('time')
 #df_upscaled = df.resample('15T').interpolate()
 df_upscaled = df
+
+
+
+
 # Compare with Values above, True if current Value is bigger, False if not
 #df_upscaled['Bool'] = df_upscaled['cluster'] > df_upscaled['cluster'].shift(1)
 #mask = df_upscaled['Bool'].isna()
@@ -164,7 +166,6 @@ df_upscaled.loc[mask, 'label'] = 't'
 df = df_upscaled
 while 't' in df['label'].values:
     df.loc[(df['label'] == 't'), 'label'] = df['label'].shift(1)
-print(df)
 
 #df.loc[(df['Bool'] != True) & (df['label'] != 'Production') & (df['label'] != 'Non-production'), 'label'] = 'Power-up'
 #df.loc[(df['Bool'] == True) & (df['label'] != 'Production') & (df['label'] != 'Non-production'), 'label'] = 'Power-down'
