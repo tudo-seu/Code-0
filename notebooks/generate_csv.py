@@ -16,19 +16,23 @@ for i in f:
     result = df[df['Measure'] == i]
 
 
-    if 'Production' in result['label'].unique():
-        #result = result.loc[result['label'] != 'unclassified']
+    if ('Production' in result['label'].unique()):
+        result = result.loc[result['label'] != 'unclassified']
         print('Current Measure: ' + i)
         print(result['label'].value_counts())
         print(result.describe())
         print(result.info())
         print(result.isna().sum())
 
-        result.loc['time'] = pd.to_datetime(result['time'])
+        result['time'] = pd.to_datetime(result['time'])
 
+
+
+        print(result.head())
+        result = result[result['time'].dt.minute == 0]
+
+        print(result.head())
         result = result.set_index('time')
-
-        result = result.iloc[::4, :]
 
         # drop outliers
         threshold_up = result['kWh'].quantile(0.95)
