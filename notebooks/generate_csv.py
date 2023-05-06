@@ -17,7 +17,7 @@ for i in f:
 
 
     if 'Production' in result['label'].unique():
-        result = result.loc[result['label'] != 'unclassified']
+        #result = result.loc[result['label'] != 'unclassified']
         print('Current Measure: ' + i)
         print(result['label'].value_counts())
         print(result.describe())
