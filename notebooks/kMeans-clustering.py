@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import math
 
 os.chdir("..")
-data = 'data/unsupervised/Paint_AHU.csv '
+data = 'data/unsupervised/BS1 - Main 1L.csv'
 
 
 df = pd.read_csv(data)
@@ -60,7 +60,7 @@ plt.ylabel('kWh')
 #   KNeighbors  #
 # Create features
 # Create features
-n = 10000  # Number of previous and next values to include in the mean calculation
+n = 50 # Number of previous and next values to include in the mean calculation
 df[f'kWh_prev{n}_mean'] = df['kWh'].rolling(window=2*n+1, min_periods=1).apply(lambda x: x[:n].mean())
 df[f'kWh_next{n}_mean'] = df['kWh'].rolling(window=2*n+1, min_periods=1).apply(lambda x: x[-n:].mean())
 df['kWh_prevnext_mean'] = (df[f'kWh_prev{n}_mean'] + df[f'kWh_next{n}_mean']) / 2
@@ -74,18 +74,32 @@ X = scaler.fit_transform(X)
 
 X = np.nan_to_num(X, nan=0)
 # Apply K-means clustering
-Kneighbor = KMeans(n_clusters=10, random_state=0)
+Kneighbor = KMeans(n_clusters=4, random_state=0)
 labels = Kneighbor.fit_predict(X)
 df = df.drop([f'kWh_prev{n}_mean', f'kWh_next{n}_mean', 'kWh_prevnext_mean'], axis=1)
 # Add the cluster labels to the DataFrame
 df['cluster'] = labels
-print(df.head())
-#df['cluster'] = df['cluster'].replace({0 : 'Non-production', 1: 'Power-down', 2: 'Power-up', 3: 'Production'})
-print(df.head())
-df_upscaled = df['kWh'].resample('15T').interpolate()
-print(df_upscaled.head())
-df['kWh'] = df_upscaled
 
+#df['cluster'] = df['cluster'].replace({2 : 'Non-production', 0: 'Power-down', 2: 'Power-up', 4: 'Production'})
+df.loc[df['cluster'] == 0, 'label'] = 'Non-production'
+df.loc[df['cluster'] == 1, 'label'] = 'Production'
+df.loc[df['cluster'] == 2, 'label'] = 'Power-up'
+df.loc[df['cluster'] == 3, 'label'] = 'Power-down'
+df_upscaled = df.resample('15T').interpolate()
+
+mask = df_upscaled['label'].isna()
+
+df_upscaled.loc[mask, 'label'] = df_upscaled.loc[mask, 'cluster'].astype(int)
+print(df_upscaled)
+#df_upscaled.loc[mask, 'label'] = df_upscaled.loc[mask, 'label'].astype(int).round()
+df = df_upscaled
+df.loc[df['label'] == 0, 'label'] = 'Non-production'
+df.loc[df['label'] == 1, 'label'] = 'Production'
+df.loc[df['label'] == 2, 'label'] = 'Power-up'
+df.loc[df['label'] == 3, 'label'] = 'Power-down'
+#df.to_csv('test.csv')
+
+'''
 for index, row in df.iterrows():
     if math.isnan(row['cluster']):
         if (row-1)['cluster'] != (row+3)['cluster']:
@@ -99,11 +113,11 @@ for index, row in df.iterrows():
         else:
             for i in range(4):
                 (row + i)['cluster'] = (row-1)['cluster']
+'''
 
-print(df.head())
 sns.set_palette("bright")
 #sns.histplot(data=df, x='time', kde=True, element="step")
-sns.lineplot(x='time', y='kWh', data=df, hue='cluster', palette='bright')
+sns.lineplot(x='time', y='kWh', data=df, hue='label', palette='bright')
 #plt.title('KWh vs. Time')
 plt.xlabel('Time')
 plt.ylabel('kWh')
