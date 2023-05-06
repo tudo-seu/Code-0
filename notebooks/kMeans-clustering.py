@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score
 import os
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -13,13 +14,18 @@ data = 'data/supervised/Sub - Feeder F02.csv'
 vergleich = pd.read_csv(data)
 
 vergleich = vergleich.drop('Measure', axis=1)
+vergleich['time'] = pd.to_datetime(vergleich['time'])
+vergleich = vergleich[vergleich['time'].dt.minute == 0]
+
+
 vergleich.to_csv('vergleich.csv')
+
 
 
 df = pd.read_csv(data)
 df = df.dropna()
-threshold_down = df['kWh'].quantile(0.01)
-df = df[(df['kWh'] > threshold_down)]
+#threshold_down = df['kWh'].quantile(0.01)
+#df = df[(df['kWh'] > threshold_down)]
 
 df['num_time'] = pd.to_numeric(pd.to_datetime(df['time']))
 df = df.drop(['label', 'Measure', 'time'], axis=1)
@@ -99,29 +105,37 @@ for i in range(4):
     if i not in known:
         missing.append(i)
 
-df.loc[df['cluster'] == min_label, 'label'] = 'Non-production'
+df.loc[df['cluster'] == min_label, 'label'] = 'Power-down'
 df.loc[df['cluster'] == max_label, 'label'] = 'Production'
 df.loc[df['cluster'] == missing[0], 'label'] = 'Power-up'
-df.loc[df['cluster'] == missing[1], 'label'] = 'Power-down'
+df.loc[df['cluster'] == missing[1], 'label'] = 'Non-production'
+print(accuracy_score(df['label'], vergleich['label']))
+
 df_upscaled = df.resample('15T').interpolate()
+
+# Compare with Values above, True if current Value is bigger, False if not
+df_upscaled['Bool'] = df['cluster'] > df['cluster'].shift(1)
+mask = df_upscaled['Bool'].isna()
+df_upscaled.loc[mask, 'Bool'] = True
 
 mask = df_upscaled['label'].isna()
 
 df_upscaled.loc[mask, 'label'] = df_upscaled.loc[mask, 'cluster'].astype(int)
-print(df_upscaled)
+
 #df_upscaled.loc[mask, 'label'] = df_upscaled.loc[mask, 'label'].astype(int).round()
 df = df_upscaled
 df.loc[df['label'] == min_label, 'label'] = 'Non-production'
 df.loc[df['label'] == max_label, 'label'] = 'Production'
-df.loc[df['label'] == missing[0], 'label'] = 'Power-up'
-df.loc[df['label'] == missing[1], 'label'] = 'Power-down'
+df[df['Bool'] == True].loc[df['label'] != (min_label, max_label), 'label'] = 'Power-up'
+df[df['Bool'] == False].loc[df['label'] != (min_label, max_label), 'label'] = 'Power-down'
 
 
 df = df.drop(['num_time', 'phase', 'cluster'], axis=1)
 df.reset_index(inplace=True)
-print(df)
 df = df[df['time'].dt.minute == 0]
+
 df.to_csv('test.csv')
+
 
 '''
 for index, row in df.iterrows():
