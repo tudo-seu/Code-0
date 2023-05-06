@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler
 import os
 import seaborn as sns
 import matplotlib.pyplot as plt
+import math
 
 os.chdir("..")
 data = 'data/unsupervised/Paint_AHU.csv '
@@ -59,7 +60,7 @@ plt.ylabel('kWh')
 #   KNeighbors  #
 # Create features
 # Create features
-n = 1000  # Number of previous and next values to include in the mean calculation
+n = 10000  # Number of previous and next values to include in the mean calculation
 df[f'kWh_prev{n}_mean'] = df['kWh'].rolling(window=2*n+1, min_periods=1).apply(lambda x: x[:n].mean())
 df[f'kWh_next{n}_mean'] = df['kWh'].rolling(window=2*n+1, min_periods=1).apply(lambda x: x[-n:].mean())
 df['kWh_prevnext_mean'] = (df[f'kWh_prev{n}_mean'] + df[f'kWh_next{n}_mean']) / 2
@@ -73,19 +74,36 @@ X = scaler.fit_transform(X)
 
 X = np.nan_to_num(X, nan=0)
 # Apply K-means clustering
-Kneighbor = KMeans(n_clusters=4, random_state=0)
+Kneighbor = KMeans(n_clusters=10, random_state=0)
 labels = Kneighbor.fit_predict(X)
-
+df = df.drop([f'kWh_prev{n}_mean', f'kWh_next{n}_mean', 'kWh_prevnext_mean'], axis=1)
 # Add the cluster labels to the DataFrame
 df['cluster'] = labels
+print(df.head())
+#df['cluster'] = df['cluster'].replace({0 : 'Non-production', 1: 'Power-down', 2: 'Power-up', 3: 'Production'})
+print(df.head())
+df_upscaled = df['kWh'].resample('15T').interpolate()
+print(df_upscaled.head())
+df['kWh'] = df_upscaled
 
-df['cluster'] = df['cluster'].replace({0 : 'Non-production', 1: 'Power-down', 2: 'Power-up', 3: 'Production'}, inplace=True)
-df_upscaled = df.resample('15T').interpolate()
+for index, row in df.iterrows():
+    if math.isnan(row['cluster']):
+        if (row-1)['cluster'] != (row+3)['cluster']:
+            if (row-1)['cluster'] == 'Production':
+                state = 'Power-down'
+            else:
+                state = 'Power-up'
+            for i in range(4):
+                (row + i)['cluster'] = state
+
+        else:
+            for i in range(4):
+                (row + i)['cluster'] = (row-1)['cluster']
 
 print(df.head())
 sns.set_palette("bright")
-sns.histplot(data=df, x='time', kde=True, element="step")
-sns.lineplot(x='time', y='kWh', hue='phase', data=df)
+#sns.histplot(data=df, x='time', kde=True, element="step")
+sns.lineplot(x='time', y='kWh', data=df, hue='cluster', palette='bright')
 #plt.title('KWh vs. Time')
 plt.xlabel('Time')
 plt.ylabel('kWh')
