@@ -8,12 +8,12 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 os.chdir("..")
-data = 'data/unsupervised/Sub-FeederF01.csv'
+data = 'data/unsupervised/Paint_AHU.csv '
 
 
 df = pd.read_csv(data)
 df = df.dropna()
-threshold_down = df['kWh'].quantile(0.07)
+threshold_down = df['kWh'].quantile(0.01)
 df = df[(df['kWh'] > threshold_down)]
 
 df['num_time'] = pd.to_numeric(pd.to_datetime(df['time']))
@@ -58,16 +58,20 @@ plt.show()
 # ****************************************************** #
 #   KNeighbors  #
 # Create features
-df['kWh_prev3_mean'] = df['kWh'].rolling(window=4, min_periods=1).apply(lambda x: x[0:3].mean())
-df['kWh_next3_mean'] = df['kWh'].rolling(window=4, min_periods=1).apply(lambda x: x[1:4].mean())
-df['kWh_prevnext3_std'] = df['kWh'].rolling(window=4, min_periods=1).apply(lambda x: x[0:3].std() + x[1:4].std())
-X = df[['kWh', 'kWh_prev3_mean', 'kWh_next3_mean', 'kWh_prevnext3_std']].values
+# Create features
+n = 5  # Number of previous and next values to include in the mean calculation
+df[f'kWh_prev{n}_mean'] = df['kWh'].rolling(window=2*n+1, min_periods=1).apply(lambda x: x[:n].mean())
+df[f'kWh_next{n}_mean'] = df['kWh'].rolling(window=2*n+1, min_periods=1).apply(lambda x: x[-n:].mean())
+df['kWh_prevnext_mean'] = (df[f'kWh_prev{n}_mean'] + df[f'kWh_next{n}_mean']) / 2
+X = df[['kWh', f'kWh_prev{n}_mean', f'kWh_next{n}_mean', 'kWh_prevnext_mean']].values
+#
+#X = df[['kWh', 'kWh_prev3_mean', 'kWh_next3_mean', 'kWh_prevnext3_std']].values
 
 # Normalize the features
 scaler = StandardScaler()
 X = scaler.fit_transform(X)
 
-X = np.nan_to_num()
+X = np.nan_to_num(X, nan=0)
 # Apply K-means clustering
 Kneighbor = KMeans(n_clusters=4, random_state=0)
 labels = Kneighbor.fit_predict(X)
