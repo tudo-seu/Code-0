@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import math
 
 os.chdir("..")
-data = 'data/supervised/Sub - Feeder F02.csv'
+data = 'data/holdout.csv'
 vergleich = pd.read_csv(data)
 
 vergleich = vergleich.drop('Measure', axis=1)
@@ -22,11 +22,13 @@ vergleich.to_csv('vergleich.csv')
 
 
 
+
 df = pd.read_csv(data)
 df = df.dropna()
-threshold_down = df['kWh'].quantile(0.02)
-df = df[(df['kWh'] > threshold_down)]
-vergleich = vergleich[(vergleich['kWh'] > threshold_down)]
+threshold_up = df['kWh'].quantile(0.95)
+threshold_down = df['kWh'].quantile(0.05)
+df = df[(df['kWh'] > threshold_down) & (df['kWh'] < threshold_up)]
+vergleich = vergleich[(vergleich['kWh'] > threshold_down) & (vergleich['kWh'] < threshold_up)]
 
 df = df.drop('Measure', axis = 1)
 '''
@@ -146,8 +148,8 @@ df.to_csv('test.csv')
 print('Actual accuracy: ', accuracy_score(vergleich['label'], df['label']))
 df['time'] = pd.to_datetime(df['time'])
 df = df.set_index('time')
-df_upscaled = df.resample('15T').interpolate()
-
+#df_upscaled = df.resample('15T').interpolate()
+df_upscaled = df
 # Compare with Values above, True if current Value is bigger, False if not
 #df_upscaled['Bool'] = df_upscaled['cluster'] > df_upscaled['cluster'].shift(1)
 #mask = df_upscaled['Bool'].isna()
@@ -192,7 +194,7 @@ for index, row in df.iterrows():
 
 sns.set_palette("bright")
 #sns.histplot(data=df, x='time', kde=True, element="step")
-sns.lineplot(x='time', y='kWh', data=df, hue='label', palette='bright')
+sns.scatterplot(x='time', y='kWh', data=df, hue='label', palette='bright')
 #plt.title('KWh vs. Time')
 plt.xlabel('Time')
 plt.ylabel('kWh')
