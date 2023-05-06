@@ -10,15 +10,15 @@ os.chdir("..")
 
 data = 'data/train_data.csv'
 df = pd.read_csv(data)
-f = df.loc[:, 'Measure'].unique()
+fac_loc_list = df.loc[:, 'Measure'].unique()
 
-for i in f:
-    result = df[df['Measure'] == i]
+for fac_loc in fac_loc_list:
+    result = df[df['Measure'] == fac_loc]
 
 
-    if not('Production' in result['label'].unique()):
+    if 'Production' in result['label'].unique():
         #result = result.loc[result['label'] != 'unclassified']
-        print('Current Measure: ' + i)
+        print('Current Measure: ' + fac_loc)
         print(result['label'].value_counts())
         print(result.describe())
         print(result.info())
@@ -28,7 +28,7 @@ for i in f:
 
 
 
-        print(result.head())
+
         result = result[result['time'].dt.minute == 0]
 
         print(result.head())
@@ -39,7 +39,7 @@ for i in f:
         threshold_down = result['kWh'].quantile(0.05)
         result = result[(result['kWh'] < threshold_up) & (result['kWh'] > threshold_down)]
 
-        result.to_csv(i + '.csv')
+        result.to_csv(fac_loc + '.csv')
 
         #g = sns.relplot(x=result.index, y='kWh', data=result, kind='line', hue='label')
         #plt.xticks(rotation=45)
