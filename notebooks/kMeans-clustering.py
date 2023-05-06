@@ -9,7 +9,11 @@ import matplotlib.pyplot as plt
 import math
 
 os.chdir("..")
-data = 'data/unsupervised/BS1 - Main 1L.csv'
+data = 'data/supervised/Sub - Feeder F02.csv'
+vergleich = pd.read_csv(data)
+
+vergleich = vergleich.drop('Measure', axis=1)
+vergleich.to_csv('vergleich.csv')
 
 
 df = pd.read_csv(data)
@@ -76,15 +80,29 @@ X = np.nan_to_num(X, nan=0)
 # Apply K-means clustering
 Kneighbor = KMeans(n_clusters=4, random_state=0)
 labels = Kneighbor.fit_predict(X)
+
+
+
+
 df = df.drop([f'kWh_prev{n}_mean', f'kWh_next{n}_mean', 'kWh_prevnext_mean'], axis=1)
 # Add the cluster labels to the DataFrame
 df['cluster'] = labels
 
 #df['cluster'] = df['cluster'].replace({2 : 'Non-production', 0: 'Power-down', 2: 'Power-up', 4: 'Production'})
-df.loc[df['cluster'] == 0, 'label'] = 'Non-production'
-df.loc[df['cluster'] == 1, 'label'] = 'Production'
-df.loc[df['cluster'] == 2, 'label'] = 'Power-up'
-df.loc[df['cluster'] == 3, 'label'] = 'Power-down'
+grouped = df.groupby('cluster')['kWh'].mean()
+max_label = grouped.idxmax()
+min_label = grouped.idxmin()
+
+known = [max_label, min_label]
+missing = []
+for i in range(4):
+    if i not in known:
+        missing.append(i)
+
+df.loc[df['cluster'] == min_label, 'label'] = 'Non-production'
+df.loc[df['cluster'] == max_label, 'label'] = 'Production'
+df.loc[df['cluster'] == missing[0], 'label'] = 'Power-up'
+df.loc[df['cluster'] == missing[1], 'label'] = 'Power-down'
 df_upscaled = df.resample('15T').interpolate()
 
 mask = df_upscaled['label'].isna()
@@ -93,11 +111,17 @@ df_upscaled.loc[mask, 'label'] = df_upscaled.loc[mask, 'cluster'].astype(int)
 print(df_upscaled)
 #df_upscaled.loc[mask, 'label'] = df_upscaled.loc[mask, 'label'].astype(int).round()
 df = df_upscaled
-df.loc[df['label'] == 0, 'label'] = 'Non-production'
-df.loc[df['label'] == 1, 'label'] = 'Production'
-df.loc[df['label'] == 2, 'label'] = 'Power-up'
-df.loc[df['label'] == 3, 'label'] = 'Power-down'
-#df.to_csv('test.csv')
+df.loc[df['label'] == min_label, 'label'] = 'Non-production'
+df.loc[df['label'] == max_label, 'label'] = 'Production'
+df.loc[df['label'] == missing[0], 'label'] = 'Power-up'
+df.loc[df['label'] == missing[1], 'label'] = 'Power-down'
+
+
+df = df.drop(['num_time', 'phase', 'cluster'], axis=1)
+df.reset_index(inplace=True)
+print(df)
+df = df[df['time'].dt.minute == 0]
+df.to_csv('test.csv')
 
 '''
 for index, row in df.iterrows():
