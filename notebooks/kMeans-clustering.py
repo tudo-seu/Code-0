@@ -38,19 +38,19 @@ labels = kmeans.predict(X)
 df['phase'] = labels
 
 # Save the updated data to a new CSV file
-df.to_csv('Sub - Feeder F01-labeled.csv')
+#df.to_csv('Sub - Feeder F01-labeled.csv')
 df['time'] = pd.to_datetime(df['num_time'])
 df = df.set_index('time')
 print(df.head())
 sns.set_palette("bright")
-sns.lineplot(x=df.index, y='kWh', hue='phase', data=df)
+#sns.lineplot(x=df.index, y='kWh', hue='phase', data=df)
 # Set the plot title and axis labels
 #plt.title('KWh vs. Time')
 plt.xlabel('Time')
 plt.ylabel('kWh')
 
 # Show the plot
-plt.show()
+#plt.show()
 
 
 
@@ -59,7 +59,7 @@ plt.show()
 #   KNeighbors  #
 # Create features
 # Create features
-n = 5  # Number of previous and next values to include in the mean calculation
+n = 1000  # Number of previous and next values to include in the mean calculation
 df[f'kWh_prev{n}_mean'] = df['kWh'].rolling(window=2*n+1, min_periods=1).apply(lambda x: x[:n].mean())
 df[f'kWh_next{n}_mean'] = df['kWh'].rolling(window=2*n+1, min_periods=1).apply(lambda x: x[-n:].mean())
 df['kWh_prevnext_mean'] = (df[f'kWh_prev{n}_mean'] + df[f'kWh_next{n}_mean']) / 2
@@ -79,10 +79,13 @@ labels = Kneighbor.fit_predict(X)
 # Add the cluster labels to the DataFrame
 df['cluster'] = labels
 
+df['cluster'] = df['cluster'].replace({0 : 'Non-production', 1: 'Power-down', 2: 'Power-up', 3: 'Production'}, inplace=True)
+df_upscaled = df.resample('15T').interpolate()
+
 print(df.head())
 sns.set_palette("bright")
-sns.lineplot(x=df.index, y='kWh', hue='cluster', data=df)
-# Set the plot title and axis labels
+sns.histplot(data=df, x='time', kde=True, element="step")
+sns.lineplot(x='time', y='kWh', hue='phase', data=df)
 #plt.title('KWh vs. Time')
 plt.xlabel('Time')
 plt.ylabel('kWh')
