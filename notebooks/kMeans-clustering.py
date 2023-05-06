@@ -15,7 +15,7 @@ vergleich = pd.read_csv(data)
 
 vergleich = vergleich.drop('Measure', axis=1)
 vergleich['time'] = pd.to_datetime(vergleich['time'])
-vergleich = vergleich[vergleich['time'].dt.minute == 0]
+#vergleich = vergleich[vergleich['time'].dt.minute == 0]
 
 
 vergleich.to_csv('vergleich.csv')
@@ -24,9 +24,12 @@ vergleich.to_csv('vergleich.csv')
 
 df = pd.read_csv(data)
 df = df.dropna()
-#threshold_down = df['kWh'].quantile(0.01)
-#df = df[(df['kWh'] > threshold_down)]
+threshold_down = df['kWh'].quantile(0.02)
+df = df[(df['kWh'] > threshold_down)]
+vergleich = vergleich[(vergleich['kWh'] > threshold_down)]
 
+df = df.drop('Measure', axis = 1)
+'''
 df['num_time'] = pd.to_numeric(pd.to_datetime(df['time']))
 df = df.drop(['label', 'Measure', 'time'], axis=1)
 
@@ -62,7 +65,7 @@ plt.ylabel('kWh')
 
 # Show the plot
 #plt.show()
-
+'''
 
 
 
@@ -70,7 +73,7 @@ plt.ylabel('kWh')
 #   KNeighbors  #
 # Create features
 # Create features
-n = 50 # Number of previous and next values to include in the mean calculation
+n = 2 # Number of previous and next values to include in the mean calculation
 df[f'kWh_prev{n}_mean'] = df['kWh'].rolling(window=2*n+1, min_periods=1).apply(lambda x: x[:n].mean())
 df[f'kWh_next{n}_mean'] = df['kWh'].rolling(window=2*n+1, min_periods=1).apply(lambda x: x[-n:].mean())
 df['kWh_prevnext_mean'] = (df[f'kWh_prev{n}_mean'] + df[f'kWh_next{n}_mean']) / 2
@@ -84,7 +87,7 @@ X = scaler.fit_transform(X)
 
 X = np.nan_to_num(X, nan=0)
 # Apply K-means clustering
-Kneighbor = KMeans(n_clusters=4, random_state=0)
+Kneighbor = KMeans(n_clusters=5, random_state=0)
 labels = Kneighbor.fit_predict(X)
 
 
@@ -99,42 +102,77 @@ grouped = df.groupby('cluster')['kWh'].mean()
 max_label = grouped.idxmax()
 min_label = grouped.idxmin()
 
-known = [max_label, min_label]
-missing = []
-for i in range(4):
-    if i not in known:
-        missing.append(i)
+clusters = []
+for i in grouped:
+    clusters.append(i)
+clusters.sort()
 
-df.loc[df['cluster'] == min_label, 'label'] = 'Non-production'
-df.loc[df['cluster'] == max_label, 'label'] = 'Production'
-df.loc[df['cluster'] == missing[0], 'label'] = 'Power-up'
-df.loc[df['cluster'] == missing[1], 'label'] = 'Power-down'
-print(accuracy_score(df['label'], vergleich['label']))
+for i in range(len(clusters)):
+    print(np.where(grouped == clusters[i])[0][0])
+    clusters[i] = np.where(grouped == clusters[i])[0][0]
 
+print(clusters)
+print(len(df['kWh'])*0.88)
+percentage =  len(vergleich.loc[vergleich['label'] == 'unclassified', 'label']) / len(vergleich.loc[vergleich['label'] != 'unclassified', 'label'])
+print('Unclassified tags %:',percentage)
+print('Theoretical accuracy :', 1-percentage)
+
+df.loc[df['cluster'] == clusters[0], 'label'] = 'Non-production'
+df.loc[df['cluster'] == clusters[1], 'label'] = 'Non-production'
+df.loc[df['cluster'] == clusters[2], 'label'] = 't'
+df.loc[df['cluster'] == clusters[3], 'label'] = 'Production'
+df.loc[df['cluster'] == clusters[4], 'label'] = 'Production'
+'''
+df.loc[df['cluster'] == clusters[5], 'label'] = 'Production'
+df.loc[df['cluster'] == clusters[6], 'label'] = 'Production'
+
+df.loc[df['cluster'] == clusters[7], 'label'] = 'Production'
+
+df.loc[df['cluster'] == clusters[8], 'label'] = 'Production'
+df.loc[df['cluster'] == clusters[9], 'label'] = 'Production'
+df.loc[df['cluster'] == clusters[10], 'label'] = 'Production'
+df.loc[df['cluster'] == clusters[11], 'label'] = 'Production'
+'''
+df.iloc[0, df.columns.get_loc('label')] = 'Power-up'
+while 't' in df['label'].values:
+    df.loc[(df['label'].shift(1) == 'Power-up') & (df['label'].shift(2) == 'Power-up') & (df['label'] == 't'), 'label'] = 'Production'
+    df.loc[(df['label'].shift(1) == 'Power-down') & (df['label'].shift(2) == 'Power-down') & (df['label'] == 't'), 'label'] = 'Non-production'
+    df.loc[((df['label'].shift(1) == 'Non-production') & (df['label'].shift(-1) == 'Non-production')) & (df['label'] == 't'), 'label'] = 'Non-production'
+    df.loc[((df['label'].shift(1) == 'Production') & (df['label'].shift(-1) == 'Production')) & (df['label'] == 't'), 'label'] = 'Production'
+    df.loc[((df['label'].shift(1) == 'Non-production') | (df['label'].shift(1) == 'Power-up')) & (df['label'] == 't'), 'label'] = 'Power-up'
+    df.loc[((df['label'].shift(1) == 'Production') | (df['label'].shift(1) == 'Power-down')) & (df['label'] == 't'), 'label'] = 'Power-down'
+
+df.to_csv('test.csv')
+print('Actual accuracy: ', accuracy_score(vergleich['label'], df['label']))
+df['time'] = pd.to_datetime(df['time'])
+df = df.set_index('time')
 df_upscaled = df.resample('15T').interpolate()
 
 # Compare with Values above, True if current Value is bigger, False if not
-df_upscaled['Bool'] = df_upscaled['label'] > df_upscaled['label'].shift(1)
-mask = df_upscaled['Bool'].isna()
-df_upscaled.loc[mask, 'Bool'] = True
+#df_upscaled['Bool'] = df_upscaled['cluster'] > df_upscaled['cluster'].shift(1)
+#mask = df_upscaled['Bool'].isna()
+#df_upscaled.loc[mask, 'Bool'] = False
 
 mask = df_upscaled['label'].isna()
 
-df_upscaled.loc[mask, 'label'] = df_upscaled.loc[mask, 'cluster'].astype(int)
+#df_upscaled.loc[mask, 'label'] = df_upscaled.loc[mask, 'cluster'].astype(int)
 
-df_upscaled.loc[mask, 'label'] = df_upscaled.loc[mask, 'label'].astype(int).round()
+#df_upscaled.loc[mask, 'label'] = df_upscaled.loc[mask, 'label'].astype(int).round()
+df_upscaled.loc[mask, 'label'] = 't'
 df = df_upscaled
-df.loc[df['label'] == min_label, 'label'] = 'Non-production'
-df.loc[df['label'] == max_label, 'label'] = 'Production'
-df.loc[(df['Bool'] == True) & (df['label'] in list(range(4))), 'label'] = 'Power-up'
-df.loc[(df['Bool'] == False) & (df['label'] in list(range(4))), 'label'] = 'Power-down'
+while 't' in df['label'].values:
+    df.loc[(df['label'] == 't'), 'label'] = df['label'].shift(1)
+print(df)
 
-df = df.drop(['num_time', 'phase', 'cluster'], axis=1)
+#df.loc[(df['Bool'] != True) & (df['label'] != 'Production') & (df['label'] != 'Non-production'), 'label'] = 'Power-up'
+#df.loc[(df['Bool'] == True) & (df['label'] != 'Production') & (df['label'] != 'Non-production'), 'label'] = 'Power-down'
+
+df = df.drop(['cluster'], axis=1)
 df.reset_index(inplace=True)
 #df = df[df['time'].dt.minute == 0]
 
+#df.to_csv('test.csv')
 df.to_csv('test.csv')
-
 
 '''
 for index, row in df.iterrows():
