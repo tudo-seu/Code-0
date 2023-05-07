@@ -8,6 +8,7 @@ import os
 import seaborn as sns
 import matplotlib.pyplot as plt
 import math
+import pickle
 
 # Importing Files
 os.chdir("..")
@@ -88,6 +89,9 @@ X = np.nan_to_num(X, nan=0)
 # Apply K-means clustering
 Kneighbor = KMeans(n_clusters=6, random_state=0)
 labels = Kneighbor.fit_predict(X)
+
+with open('models/k-Means-clustering.pickle', 'wb') as f:
+    pickle.dump(Kneighbor, f)
 
 df = df.drop([f'kWh_prev{n}_mean', f'kWh_next{n}_mean', 'kWh_prevnext_mean'], axis=1)
 # Add the cluster labels to the DataFrame
