@@ -29,6 +29,8 @@ threshold_down = df['kWh'].quantile(0.05)
 df = df[(df['kWh'] > threshold_down) & (df['kWh'] < threshold_up)]
 vergleich = vergleich[(vergleich['kWh'] > threshold_down) & (vergleich['kWh'] < threshold_up)]
 
+
+measure = df['Measure'].unique()
 df = df.drop('Measure', axis = 1)
 '''
 df['num_time'] = pd.to_numeric(pd.to_datetime(df['time']))
@@ -90,8 +92,10 @@ X = np.nan_to_num(X, nan=0)
 Kneighbor = KMeans(n_clusters=6, random_state=0)
 labels = Kneighbor.fit_predict(X)
 
+'''
 with open('models/k-Means-clustering.pickle', 'wb') as f:
     pickle.dump(Kneighbor, f)
+'''
 
 df = df.drop([f'kWh_prev{n}_mean', f'kWh_next{n}_mean', 'kWh_prevnext_mean'], axis=1)
 # Add the cluster labels to the DataFrame
@@ -177,7 +181,7 @@ df.reset_index(inplace=True)
 #df = df[df['time'].dt.minute == 0]
 
 #df.to_csv('test.csv')
-df.to_csv('test.csv')
+df.to_csv('result.csv', index=False)
 
 '''
 for index, row in df.iterrows():
