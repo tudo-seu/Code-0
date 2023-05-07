@@ -9,20 +9,18 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import math
 
+# Importing Files
 os.chdir("..")
-data = 'data/holdout.csv'
+data = 'data/holdout_v3.csv'
 vergleich = pd.read_csv(data)
 
 vergleich = vergleich.drop('Measure', axis=1)
 vergleich['time'] = pd.to_datetime(vergleich['time'])
 #vergleich = vergleich[vergleich['time'].dt.minute == 0]
+#vergleich.to_csv('vergleich.csv')
 
 
-vergleich.to_csv('vergleich.csv')
-
-
-
-
+# Clearing up data
 df = pd.read_csv(data)
 df = df.dropna()
 threshold_up = df['kWh'].quantile(0.95)
@@ -74,7 +72,6 @@ plt.ylabel('kWh')
 # ****************************************************** #
 #   KNeighbors  #
 # Create features
-# Create features
 n = 2 # Number of previous and next values to include in the mean calculation
 df[f'kWh_prev{n}_mean'] = df['kWh'].rolling(window=2*n+1, min_periods=1).apply(lambda x: x[:n].mean())
 df[f'kWh_next{n}_mean'] = df['kWh'].rolling(window=2*n+1, min_periods=1).apply(lambda x: x[-n:].mean())
@@ -92,9 +89,6 @@ X = np.nan_to_num(X, nan=0)
 Kneighbor = KMeans(n_clusters=6, random_state=0)
 labels = Kneighbor.fit_predict(X)
 
-
-
-
 df = df.drop([f'kWh_prev{n}_mean', f'kWh_next{n}_mean', 'kWh_prevnext_mean'], axis=1)
 # Add the cluster labels to the DataFrame
 df['cluster'] = labels
@@ -104,6 +98,7 @@ grouped = df.groupby('cluster')['kWh'].mean()
 max_label = grouped.idxmax()
 min_label = grouped.idxmin()
 
+# Sort clusters and get Indices
 clusters = []
 for i in grouped:
     clusters.append(i)
@@ -143,7 +138,10 @@ while 't' in df['label'].values:
     df.loc[((df['label'].shift(1) == 'Production') | (df['label'].shift(1) == 'Power-down')) & (df['label'] == 't'), 'label'] = 'Power-down'
 
 df.to_csv('test.csv')
-print('Actual accuracy: ', accuracy_score(vergleich['label'], df['label']))
+
+if 'label' in vergleich.columns:
+   print('Actual accuracy: ', accuracy_score(vergleich['label'], df['label']))
+
 df['time'] = pd.to_datetime(df['time'])
 df = df.set_index('time')
 #df_upscaled = df.resample('15T').interpolate()
