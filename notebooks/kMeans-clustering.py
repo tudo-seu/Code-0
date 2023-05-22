@@ -177,10 +177,13 @@ while 't' in df['label'].values:
 #df.loc[(df['Bool'] == True) & (df['label'] != 'Production') & (df['label'] != 'Non-production'), 'label'] = 'Power-down'
 
 df = df.drop(['cluster'], axis=1)
+
 df.reset_index(inplace=True)
 #df = df[df['time'].dt.minute == 0]
 
 #df.to_csv('test.csv')
+df.insert(1, 'Measure', 1)
+df.loc[(df['Measure'] == 1), 'Measure'] = measure
 df.to_csv('result.csv', index=False)
 
 '''
