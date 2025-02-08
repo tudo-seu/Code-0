@@ -13,8 +13,8 @@
     - b) The unsupervised approach used kMeans clustering. Interestingly, using 6 instead of 4 clusters performed better on the given 4 classes; our final unsupervised approach resulted in having 2 clusters for "Production" and "Non-production" rather than a one-to-one mapping for every class.
     - c) Our semi-supervised approach utilizing LabelPropagation with a knn kernel unfortunately did not work in time before the submission deadline.
 
-### Our obtained scores vs 1'st place scores
-| Unseen Test Dataset | iamai - 1'st place   | Code0 - 2'nd place (Our Team) |
+### Our obtained scores vs 1st place scores
+| Unseen Test Dataset | iamai - 1st place   | Code0 - 2nd place (Our Team) |
 |---------------------|----------------------|-------------------------|
 | Body_AHU            | 0.8601190476190477   | 0.8257068452380952      |
 | BS1                 | 0.8980392156862745   | 0.8723039215686275      |
